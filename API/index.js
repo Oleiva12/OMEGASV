@@ -1,8 +1,6 @@
 const express = require('express');
 const mysql = require('mysql');
 const bodyParser = require('body-parser');
-require('dotenv').config();
-
 
 const app = express();
 const port = 3000;
@@ -10,10 +8,10 @@ const port = 3000;
 app.use(bodyParser.json());
 
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'tu_usuario',
-  password: 'tu_contraseña',
-  database: 'tu_base_de_datos'
+  host: '34.122.212.254',
+  user: 'DBA',
+  password: 'Kgv<]?|2xagvrR5u',
+  database: 'inventario'
 });
 
 db.connect(err => {
@@ -24,21 +22,59 @@ db.connect(err => {
   }
 });
 
-app.post('/api/productos', (req, res) => {
-  const { descripcion, cantidad_en_stock, precio_compra, fecha_vencimiento } = req.body;
+app.post('/api/sucursales', (req, res) => {
+  const { nombre } = req.body;
 
-  if (!descripcion || cantidad_en_stock === undefined || !precio_compra) {
-    return res.status(400).json({ error: 'Faltan datos en la solicitud' });
+  if (!nombre) {
+    return res.status(400).json({ error: 'El nombre de la sucursal es obligatorio' });
   }
 
-  const query = 'INSERT INTO productos (descripcion, cantidad_en_stock, precio_compra, fecha_vencimiento) VALUES (?, ?, ?, ?)';
-  db.query(query, [descripcion, cantidad_en_stock, precio_compra, fecha_vencimiento], (err, result) => {
+  const query = 'INSERT INTO sucursales (nombre) VALUES (?)';
+  db.query(query, [nombre], (err, result) => {
     if (err) {
-      console.error('Error al insertar datos:', err);
-      return res.status(500).json({ error: 'Error al insertar datos' });
+      console.error('Error al insertar sucursal:', err);
+      return res.status(500).json({ error: 'Error al insertar sucursal' });
+    }
+
+    res.status(201).json({ message: 'Sucursal insertada exitosamente', id: result.insertId });
+  });
+});
+
+app.post('/api/productos', (req, res) => {
+  const { nombre, descripcion } = req.body;
+
+  if (!nombre || !descripcion) {
+    return res.status(400).json({ error: 'Faltan datos en la solicitud (nombre, descripcion)' });
+  }
+
+  const query = 'INSERT INTO productos (nombre, descripcion) VALUES (?, ?)';
+  db.query(query, [nombre, descripcion], (err, result) => {
+    if (err) {
+      console.error('Error al insertar producto:', err);
+      return res.status(500).json({ error: 'Error al insertar producto' });
     }
 
     res.status(201).json({ message: 'Producto insertado exitosamente', id: result.insertId });
+  });
+});
+
+
+app.post('/api/productos_sucursales', (req, res) => {
+  const { id_producto, id_sucursal, cantidad } = req.body;
+
+  if (!id_producto || !id_sucursal || cantidad === undefined) {
+    return res.status(400).json({ error: 'Faltan datos en la solicitud (id_producto, id_sucursal, cantidad)' });
+  }
+
+
+  const insertQuery = 'INSERT INTO productos_sucursales (id_producto, id_sucursal, cantidad) VALUES (?, ?, ?)';
+  db.query(insertQuery, [id_producto, id_sucursal, cantidad], (err, result) => {
+    if (err) {
+      console.error('Error al insertar producto en sucursal:', err);
+      return res.status(500).json({ error: 'Error al insertar producto en sucursal' });
+    }
+
+    res.status(201).json({ message: 'Producto en sucursal insertado exitosamente', id: result.insertId });
   });
 });
 
