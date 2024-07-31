@@ -1,23 +1,10 @@
-CREATE DATABASE inventario;
-
-USE inventario;
-
-CREATE TABLE productos (
+CREATE TABLE producto (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(255) NOT NULL,
-  descripcion VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE sucursales (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE productos_sucursales (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  id_producto INT NOT NULL,
-  id_sucursal INT NOT NULL,
+  descripcion VARCHAR(255) NOT NULL,
   cantidad INT NOT NULL,
-  FOREIGN KEY (id_producto) REFERENCES productos(id),
-  FOREIGN KEY (id_sucursal) REFERENCES sucursales(id)
+  precio_compra DECIMAL(10, 2) NOT NULL,
+  fecha_compra DATE NOT NULL,
+  sucursal VARCHAR(255) NOT NULL,
+  tipo_movimiento ENUM('entrada', 'salida') NOT NULL,
+  fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
