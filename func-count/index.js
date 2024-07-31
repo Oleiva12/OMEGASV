@@ -1,4 +1,14 @@
+const { PubSub } = require('@google-cloud/pubsub');
+const { BigQuery } = require('@google-cloud/bigquery');
 const axios = require('axios');
+
+// Configura el cliente de Pub/Sub y BigQuery
+const pubsub = new PubSub({ projectId: 'proyecto-1-430616' });
+const bigquery = new BigQuery({ projectId: 'proyecto-1-430616' });
+
+const topicName = 'data-transfer-topic'; // Reemplaza con el nombre de tu tópico de salida
+const datasetId = 'inventario'; // Reemplaza con tu ID de dataset
+const tableId = 'inventario_data'; // Reemplaza con tu ID de tabla
 
 /**
  * Triggered from a message on a Cloud Pub/Sub topic.
@@ -15,13 +25,10 @@ exports.processInventory = async (event, context) => {
 
   try {
     const apiUrl = 'https://inventario-app-2gjixdocha-uc.a.run.app/api/mock-data';
-
     const response = await axios.get(apiUrl);
-
     const inventoryData = response.data;
     console.log('Inventory Data:', inventoryData);
 
-    // Inicializamos las estructuras de datos
     const result = {};
 
     inventoryData.forEach(item => {
@@ -35,7 +42,6 @@ exports.processInventory = async (event, context) => {
         return;
       }
 
-      // Aseguramos que existan las estructuras necesarias
       if (!result[producto]) {
         result[producto] = {
           stockBySucursal: {},
@@ -57,19 +63,16 @@ exports.processInventory = async (event, context) => {
       }
 
       if (item.tipo_movimiento === 'entrada') {
-        // Aumenta el stock y el costo total de producto comprado
         result[producto].stockBySucursal[sucursal] += cantidad;
         result[producto].totalProductCostBySucursal[sucursal] += cantidad * precio;
         result[producto].totalPurchasedQuantityBySucursal[sucursal] += cantidad;
       } else if (item.tipo_movimiento === 'salida') {
-        // Reduce el stock y calcula las ventas
         result[producto].stockBySucursal[sucursal] -= cantidad;
         result[producto].totalSalesBySucursal[sucursal] += cantidad * precio;
         result[producto].totalSoldQuantityBySucursal[sucursal] += cantidad;
       }
     });
 
-    // Prepara los datos para BigQuery
     const bigQueryData = [];
 
     Object.keys(result).forEach(producto => {
@@ -87,8 +90,21 @@ exports.processInventory = async (event, context) => {
       });
     });
 
-    // Imprime los datos en el formato adecuado para BigQuery
     console.log('Datos para BigQuery:', JSON.stringify(bigQueryData, null, 2));
+
+    // Insertar datos en BigQuery
+    await bigquery
+      .dataset(datasetId)
+      .table(tableId)
+      .insert(bigQueryData);
+
+    console.log('Datos insertados en BigQuery');
+
+    // Publicar resultados a un tópico de Pub/Sub
+    const dataBuffer = Buffer.from(JSON.stringify(bigQueryData));
+    await pubsub.topic(topicName).publishMessage({ data: dataBuffer });
+
+    console.log('Datos publicados al tópico de salida:', topicName);
 
   } catch (error) {
     console.error('Error al obtener o procesar los datos del inventario:', error);
